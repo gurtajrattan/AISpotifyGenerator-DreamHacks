@@ -20,7 +20,7 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
 USER_ID = os.getenv("SPOTIFY_USER_ID")
 
 # Function to search songs
-def search_songs(word, limit=10):
+def search_songs(word, limit):
     results = sp.search(q=word, type="track", limit=limit)
     tracks = results["tracks"]["items"]
     return [{"name": track["name"], "artist": track["artists"][0]["name"], "uri": track["uri"]} for track in tracks]
@@ -42,6 +42,7 @@ def index():
 @app.route('/generate_playlist', methods=['POST'])
 def generate_playlist():
     word = request.form.get('word')
+    limit = request.form.get('limit', 10, type=int)
 
     if not word:
         return jsonify({"error": "Please enter a word"}), 400
@@ -50,7 +51,7 @@ def generate_playlist():
     word = word.split()[0]  # <-- This line ensures only the first word is used
 
     # Search for tracks
-    track_list = search_songs(word)
+    track_list = search_songs(word, limit)
     track_uris = [track["uri"] for track in track_list]
 
     if not track_uris:

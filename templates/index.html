@@ -11,14 +11,27 @@
         Spotify Playlist Creator
     </header>
     <div class="container">
-        <h2>Generate a Playlist from Describing your Dream</h2>
+        <h2>Generate a Playlist by Describing your Dream</h2>
         <input type="text" id="sentence" placeholder="Enter a sentence...">
+
+    <br>    
+
+    <div class="slider-container">
+        <label for="songCount">Number of Songs: <span id="songCountValue">10</span></label>
+        <input type="range" id="songCount" min="10" max="50" value="10" step="1" oninput="updateSongCount()">
+    </div>
+
         <button onclick="generatePlaylist()">Create Playlist</button>
         <div class="playlist" id="playlist"></div>
     </div>
     <script>
+        function updateSongCount() {
+            document.getElementById('songCountValue').textContent = document.getElementById('songCount').value;
+        }
+
         async function generatePlaylist() {
             let sentence = document.getElementById('sentence').value;
+            let songCount = document.getElementById('songCount').value;
             let playlistDiv = document.getElementById('playlist');
             playlistDiv.innerHTML = "<h3>Generating Playlist...</h3>";
     
@@ -33,7 +46,7 @@
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
                     },
-                    body: new URLSearchParams({ word: sentence })
+                    body: new URLSearchParams({ word: sentence, limit: songCount })
                 });
     
                 let data = await response.json();
