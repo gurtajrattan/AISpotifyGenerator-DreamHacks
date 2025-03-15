@@ -42,9 +42,12 @@ def index():
 @app.route('/generate_playlist', methods=['POST'])
 def generate_playlist():
     word = request.form.get('word')
-    
+
     if not word:
         return jsonify({"error": "Please enter a word"}), 400
+
+    # Take first meaningful word for search (splitting sentence)
+    word = word.split()[0]  # <-- This line ensures only the first word is used
 
     # Search for tracks
     track_list = search_songs(word)

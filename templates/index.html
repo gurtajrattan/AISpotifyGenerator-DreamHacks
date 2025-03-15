@@ -17,17 +17,42 @@
         <div class="playlist" id="playlist"></div>
     </div>
     <script>
-        function generatePlaylist() {
+        async function generatePlaylist() {
             let sentence = document.getElementById('sentence').value;
             let playlistDiv = document.getElementById('playlist');
-            playlistDiv.innerHTML = "<h3>Your Playlist:</h3>";
-            let words = sentence.split(" ");
-            words.forEach(word => {
-                let songItem = document.createElement("div");
-                songItem.className = "playlist-item";
-                songItem.textContent = `🎵 ${word.charAt(0).toUpperCase() + word.slice(1)} - Sample Song`;
-                playlistDiv.appendChild(songItem);
-            });
+            playlistDiv.innerHTML = "<h3>Generating Playlist...</h3>";
+    
+            if (!sentence.trim()) {
+                playlistDiv.innerHTML = "<p style='color: red;'>Please enter a sentence!</p>";
+                return;
+            }
+    
+            try {
+                let response = await fetch('/generate_playlist', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({ word: sentence })
+                });
+    
+                let data = await response.json();
+    
+                if (response.ok) {
+                    playlistDiv.innerHTML = `<h3>Playlist Created: Songs about '${sentence}'</h3>`;
+                    data.tracks.forEach(track => {
+                        let songItem = document.createElement("div");
+                        songItem.className = "playlist-item";
+                        songItem.textContent = `🎵 ${track.name} - ${track.artist}`;
+                        playlistDiv.appendChild(songItem);
+                    });
+                } else {
+                    playlistDiv.innerHTML = `<p style='color: red;'>${data.error}</p>`;
+                }
+            } catch (error) {
+                playlistDiv.innerHTML = `<p style='color: red;'>Error creating playlist. Try again!</p>`;
+                console.error("Error:", error);
+            }
         }
     </script>
 </body>
