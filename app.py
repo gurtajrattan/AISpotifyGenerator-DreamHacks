@@ -1,15 +1,17 @@
 import os
+import google.generativeai as genai
 import spotipy
-from flask import Flask, request, jsonify, render_template
 from spotipy.oauth2 import SpotifyOAuth
+from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-app = Flask(__name__)
+# Configure Gemini API
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Spotify authentication
+# Authenticate Spotify
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     client_id=os.getenv("SPOTIFY_CLIENT_ID"),
     client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
@@ -19,51 +21,64 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
 
 USER_ID = os.getenv("SPOTIFY_USER_ID")
 
-# Function to search songs
-def search_songs(word, limit=10):
-    results = sp.search(q=word, type="track", limit=limit)
-    tracks = results["tracks"]["items"]
-    return [{"name": track["name"], "artist": track["artists"][0]["name"], "uri": track["uri"]} for track in tracks]
+# Flask app
+app = Flask(__name__)
+
+# Function to summarize sentence into one word/phrase
+def summarize_sentence(sentence):
+    model = genai.GenerativeModel("gemini-1.5-pro")
+    prompt = f"Summarize this sentence into one word or a short phrase: '{sentence}'"
+    
+    response = model.generate_content(prompt)
+    return response.text.strip() if response else "music"
+
+# Function to search songs on Spotify
+def search_songs(query, limit=10):
+    results = sp.search(q=query, type="track", limit=limit)
+    return [{"name": track["name"], "artist": track["artists"][0]["name"], "uri": track["uri"]} for track in results["tracks"]["items"]]
 
 # Function to create a playlist
 def create_playlist(name):
-    playlist = sp.user_playlist_create(USER_ID, name, public=True, description="Generated via Flask + Spotify API")
+    playlist = sp.user_playlist_create(USER_ID, name, public=True, description="Generated with OpenAI + Spotify API")
     return playlist["id"]
 
 # Function to add songs to a playlist
 def add_songs_to_playlist(playlist_id, track_uris):
     sp.playlist_add_items(playlist_id, track_uris)
 
-# Flask routes
+# Route for homepage
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# Route to generate playlist
 @app.route('/generate_playlist', methods=['POST'])
 def generate_playlist():
-    word = request.form.get('word')
+    sentence = request.form.get('sentence')
+    
+    if not sentence:
+        return jsonify({"error": "Please enter a sentence"}), 400
 
-    if not word:
-        return jsonify({"error": "Please enter a word"}), 400
+    # Step 1: Use Gemini to summarize the sentence into one word/phrase
+    summarized_word = summarize_sentence(sentence)
+    print(f"🎤 Gemini summarized: '{sentence}' → '{summarized_word}'")
 
-    # Take first meaningful word for search (splitting sentence)
-    word = word.split()[0]  # <-- This line ensures only the first word is used
-
-    # Search for tracks
-    track_list = search_songs(word)
+    # Step 2: Search for songs on Spotify
+    track_list = search_songs(summarized_word)
     track_uris = [track["uri"] for track in track_list]
 
     if not track_uris:
-        return jsonify({"error": "No songs found!"}), 404
+        return jsonify({"error": f"No songs found for '{summarized_word}'"}), 404
 
-    # Create a new playlist
-    playlist_id = create_playlist(f"Songs about {word}")
+    # Step 3: Create a Spotify playlist
+    playlist_id = create_playlist(f"Songs about {summarized_word}")
 
-    # Add songs to the playlist
+    # Step 4: Add songs to the playlist
     add_songs_to_playlist(playlist_id, track_uris)
 
     return jsonify({
-        "message": f"Playlist 'Songs about {word}' created successfully!",
+        "message": f"Playlist 'Songs about {summarized_word}' created successfully!",
+        "summarized_word": summarized_word,
         "tracks": track_list
     })
 

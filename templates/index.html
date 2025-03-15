@@ -7,39 +7,42 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+
     <header>
-        Spotify Playlist Creator
+        <h1>Spotify Playlist Creator</h1>
     </header>
+
     <div class="container">
-        <h2>Generate a Playlist from Describing your Dream</h2>
+        <h2>Generate a Playlist from Your Sentence</h2>
         <input type="text" id="sentence" placeholder="Enter a sentence...">
         <button onclick="generatePlaylist()">Create Playlist</button>
         <div class="playlist" id="playlist"></div>
     </div>
+
     <script>
         async function generatePlaylist() {
-            let sentence = document.getElementById('sentence').value;
+            let sentence = document.getElementById('sentence').value.trim();
             let playlistDiv = document.getElementById('playlist');
-            playlistDiv.innerHTML = "<h3>Generating Playlist...</h3>";
-    
-            if (!sentence.trim()) {
+
+            if (!sentence) {
                 playlistDiv.innerHTML = "<p style='color: red;'>Please enter a sentence!</p>";
                 return;
             }
-    
+
+            playlistDiv.innerHTML = "<h3>Generating Playlist...</h3>";
+
             try {
                 let response = await fetch('/generate_playlist', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: new URLSearchParams({ word: sentence })
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ sentence: sentence }) // Fixed key
                 });
-    
+
                 let data = await response.json();
-    
+
                 if (response.ok) {
-                    playlistDiv.innerHTML = `<h3>Playlist Created: Songs about '${sentence}'</h3>`;
+                    playlistDiv.innerHTML = `<h3>Playlist Created: Songs about '${data.summarized_word}'</h3>`;
+                    
                     data.tracks.forEach(track => {
                         let songItem = document.createElement("div");
                         songItem.className = "playlist-item";
@@ -55,5 +58,6 @@
             }
         }
     </script>
+
 </body>
 </html>
